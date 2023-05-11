@@ -2,10 +2,8 @@
 using IfpaSlackBot.Config;
 using IfpaSlackBot.Handlers;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.DependencyInjection;
 using PinballApi;
-using SlackNet.Events;
 using SlackNet.Extensions.DependencyInjection;
 
 Console.WriteLine("Hello, World!");
@@ -25,10 +23,7 @@ services.AddSlackNet(c => c
     .UseApiToken(settings.ApiToken) // This gets used by the API client
     .UseAppLevelToken(settings.AppLevelToken)
     //.RegisterEventHandler<MessageEvent, PingHandler>());
-    // Echo demo - a slash command for telling you what you already know
     .RegisterSlashCommandHandler<IfpaCommandHandler>(IfpaCommandHandler.SlashCommand));
-
-
 
 var provider = services.BuildServiceProvider();
 
@@ -40,5 +35,5 @@ CancellationToken cancellationToken = default;
 
 while (true)
 {
-    await Task.Delay(int.MaxValue, cancellationToken);
+    await Task.Delay(-1, cancellationToken);
 }
