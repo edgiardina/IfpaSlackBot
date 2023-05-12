@@ -5,8 +5,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PinballApi;
 using SlackNet.Extensions.DependencyInjection;
+using System.Globalization;
 
-Console.WriteLine("Hello, World!");
+Console.WriteLine("Starting IFPA Companion SlackBot");
+//Culture is set explicitly because the IFPA values returned are in US Dollars
+CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("en-US");
 
 var settings = new ConfigurationBuilder()
     .AddJsonFile("appsettings.json")
