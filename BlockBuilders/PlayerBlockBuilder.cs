@@ -33,7 +33,7 @@ namespace IfpaSlackBot.BlockBuilders
                     },
                     Accessory = new Image
                     {
-                        ImageUrl = player.ProfilePhoto.ToString(),
+                        ImageUrl = player.ProfilePhoto?.ToString() ?? "https://www.ifpapinball.com/images/noplayerpic.png",
                         AltText = $"profile picture for {player.FirstName} {player.LastName}"
                     }
                 },

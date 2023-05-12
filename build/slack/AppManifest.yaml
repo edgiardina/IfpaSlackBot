@@ -1,10 +1,10 @@
 display_information:
-  name: IFPABot
+  name: IFPA Companion
   description: IFPA Pinball Rankings Bot
   background_color: "#072c53"
 features:
   bot_user:
-    display_name: IFPABot
+    display_name: IFPA Companion
     always_online: false
   slash_commands:
     - command: /ifpa

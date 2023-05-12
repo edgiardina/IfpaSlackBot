@@ -195,7 +195,11 @@ namespace IfpaSlackBot.Handlers
         private async Task<SlashCommandResponse> Help()
         {
             var helpText = @"The following commands are available:
-```help | rank | series | player | tournaments```";
+```rank [ranktype] [optional:countryname]
+series [series] [optional:year] [optional:region]
+player [IFPA ID or Player Name]
+tournaments [radiusInMiles] [location]
+```";
 
             return new SlashCommandResponse
             {
