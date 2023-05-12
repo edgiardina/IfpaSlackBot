@@ -12,6 +12,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using IfpaSlackBot.BlockBuilders;
+using SlackNet.Interaction.Experimental;
 
 namespace IfpaSlackBot.Handlers
 {
@@ -41,33 +42,51 @@ namespace IfpaSlackBot.Handlers
         public async Task<SlashCommandResponse> Handle(SlashCommand command)
         {
             Console.WriteLine($"{command.UserName} used the {SlashCommand} slash command in the {command.ChannelName} channel");
-
-            var tokens = command.Text.ToLower().Split(' ');
-            var commandToken = tokens?.FirstOrDefault();
-            var commandDetailsTokens = tokens?.Skip(1).ToArray();
-
-            if (tokens == null || tokens.Any() == false || Commands.Contains(commandToken) == false)
+            
+            try
             {
-                // input string does not start with a valid command
+                var tokens = command.Text.ToLower().Split(' ');
+                var commandToken = tokens?.FirstOrDefault();
+                var commandDetailsTokens = tokens?.Skip(1).ToArray();
+
+                if (tokens == null || tokens.Any() == false || Commands.Contains(commandToken) == false)
+                {
+                    // input string does not start with a valid command
+                    return new SlashCommandResponse
+                    {
+                        Message = new Message
+                        {
+                            Text = $"No valid commands found in `{command.Text}`."
+                        },
+                        ResponseType = ResponseType.Ephemeral
+                    };
+                }
+
+                switch (commandToken)
+                {
+                    case "rank":
+                        return await Rank(commandDetailsTokens);
+                    case "player":
+                        return await Player(commandDetailsTokens);
+                    case "series":
+                        return await Series(commandDetailsTokens);
+                    case "help":
+                    default:
+                        return await Help();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+
                 return new SlashCommandResponse
                 {
                     Message = new Message
                     {
-                        Text = $"No valid commands found in `{command.Text}`."
+                        Text = $"Encountered an error attempting to run your command."
                     },
                     ResponseType = ResponseType.Ephemeral
                 };
-            }
-
-            switch (commandToken)
-            {
-                case "rank":
-                    return await Rank(commandDetailsTokens);
-                case "player":
-                    return await Player(commandDetailsTokens);
-                case "help":
-                default:
-                    return await Help();
             }
         }
 
@@ -191,6 +210,98 @@ namespace IfpaSlackBot.Handlers
                 ResponseType = ResponseType.InChannel
             };
         }
+
+
+        private async Task<SlashCommandResponse> Series(string[] tokens) 
+        {
+            int year;
+            string region;
+            var seriesOptions = await IFPAApi.GetSeries();
+
+            if (tokens == null || tokens.Length < 1 || seriesOptions.Any(n => n.Code.ToLower() == tokens.First().ToLower()) == false)
+            {
+                return new SlashCommandResponse
+                {
+                    Message = new Message
+                    {
+                        Text = $"You must provide a valid series. Options are: {string.Join(' ', seriesOptions.Select(n => n.Code))}"
+                    },
+                    ResponseType = ResponseType.Ephemeral
+                };
+            }
+
+            var series = tokens[0];
+
+            if (tokens.Length < 2 || int.TryParse(tokens[1], out year) == false)
+            {
+                year = DateTime.Now.Year;
+            }
+
+            if (tokens.Length < 3)
+            {               
+                var seriesRanking = await IFPAApi.GetSeriesOverallStanding(series, year);
+
+                var table = new ConsoleTable("Location", "Current Leader", "# Players", "Prize $");
+
+                foreach (var ranking in seriesRanking.OverallResults)
+                {
+                    table.AddRow(ranking.RegionName,
+                                 ranking.CurrentLeader.PlayerName,
+                                 ranking.UniquePlayerCount,
+                                 ranking.PrizeFund.ToString("c"));
+                }
+
+                var responseTableAsString = table.ToMinimalString();
+                var response = $"{series.ToUpper()} IFPA standings for {year}\n\n```{responseTableAsString}```";
+
+                return new SlashCommandResponse
+                {
+                    Message = new Message
+                    {
+                        Text = response
+                    },
+                    ResponseType = ResponseType.InChannel
+                };
+            }
+            else
+            {
+                region = tokens[2];
+
+                var championshipSeries = await IFPAApi.GetSeriesStandingsForRegion(series, region, year);
+
+                var table = new ConsoleTable("Rank", "Player", "Points", "# Events");
+                table.Options.NumberAlignment = Alignment.Right;
+                if (championshipSeries.Standings != null)
+                {
+                    foreach (var ranking in championshipSeries.Standings.Take(40))
+                    {
+                        table.AddRow(ranking.SeriesRank, ranking.PlayerName, ranking.WpprPoints, ranking.EventCount);
+                    }
+                    var responseTable = table.ToMinimalString();
+
+                    return new SlashCommandResponse
+                    {
+                        Message = new Message
+                        {
+                            Text = $"{series.ToUpper()} IFPA standings for {year} in {region.ToUpper()}\n```{responseTable}```"
+                        },
+                        ResponseType = ResponseType.InChannel
+                    };
+                }
+                else
+                {
+                    return new SlashCommandResponse
+                    {
+                        Message = new Message
+                        {
+                            Text = $"Region `{region}` returned no results"
+                        },
+                        ResponseType = ResponseType.InChannel
+                    };
+                }
+            }
+        }
+
 
         private async Task<SlashCommandResponse> Help()
         {
