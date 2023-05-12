@@ -13,6 +13,7 @@ using System.Text;
 using System.Threading.Tasks;
 using IfpaSlackBot.BlockBuilders;
 using SlackNet.Interaction.Experimental;
+using PinballApi.Models.WPPR.v1.Calendar;
 
 namespace IfpaSlackBot.Handlers
 {
@@ -70,6 +71,8 @@ namespace IfpaSlackBot.Handlers
                         return await Player(commandDetailsTokens);
                     case "series":
                         return await Series(commandDetailsTokens);
+                    case "tournaments":
+                        return await Tournaments(commandDetailsTokens);
                     case "help":
                     default:
                         return await Help();
@@ -299,6 +302,64 @@ namespace IfpaSlackBot.Handlers
                         ResponseType = ResponseType.InChannel
                     };
                 }
+            }
+        }
+
+        private async Task<SlashCommandResponse> Tournaments(string[] tokens)
+        {
+            string location;
+            int radiusInMiles;
+
+            if (tokens == null || tokens.Length < 2)
+            {
+                return new SlashCommandResponse
+                {
+                    Message = new Message
+                    {
+                        Text = $"You must provide a location and radius distance in miles."
+                    },
+                    ResponseType = ResponseType.Ephemeral
+                };
+            }
+
+            int.TryParse(tokens[0], out radiusInMiles);
+            location = string.Join(' ', tokens.Skip(1));
+
+            var tournaments = await IFPALegacyApi.GetCalendarSearch(location, radiusInMiles, DistanceUnit.Miles);
+
+            if (tournaments.Calendar != null)
+            {
+                var table = new ConsoleTable("Tournament", "Date", "Location", "");
+
+                foreach (var tournament in tournaments.Calendar)
+                {
+                    table.AddRow(tournament.TournamentName,
+                                 tournament.StartDate.ToShortDateString(),
+                                 tournament.City,
+                                 tournament.Website);
+                }
+
+                var responseTable = table.ToMinimalString();
+
+                return new SlashCommandResponse
+                {
+                    Message = new Message
+                    {
+                        Text = $"```{responseTable}```"
+                    },
+                    ResponseType = ResponseType.InChannel
+                };
+            }
+            else
+            {
+                return new SlashCommandResponse
+                {
+                    Message = new Message
+                    {
+                        Text = $"No upcoming tournaments near {location}"
+                    },
+                    ResponseType = ResponseType.InChannel
+                };
             }
         }
 
