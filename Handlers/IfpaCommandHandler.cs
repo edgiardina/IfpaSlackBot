@@ -1,6 +1,9 @@
 ﻿using ConsoleTables;
 using PinballApi;
+using PinballApi.Models.WPPR.v2.Players;
 using PinballApi.Models.WPPR.v2.Rankings;
+using SlackNet.Blocks;
+using SlackNet;
 using SlackNet.Interaction;
 using SlackNet.WebApi;
 using System;
@@ -8,6 +11,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using IfpaSlackBot.BlockBuilders;
 
 namespace IfpaSlackBot.Handlers
 {
@@ -39,10 +43,10 @@ namespace IfpaSlackBot.Handlers
             Console.WriteLine($"{command.UserName} used the {SlashCommand} slash command in the {command.ChannelName} channel");
 
             var tokens = command.Text.ToLower().Split(' ');
-            var commandToken = tokens.FirstOrDefault();
-            var commandDetailsTokens = tokens.Skip(1).ToArray();
+            var commandToken = tokens?.FirstOrDefault();
+            var commandDetailsTokens = tokens?.Skip(1).ToArray();
 
-            if (tokens.Any() == false || Commands.Contains(commandToken) == false)
+            if (tokens == null || tokens.Any() == false || Commands.Contains(commandToken) == false)
             {
                 // input string does not start with a valid command
                 return new SlashCommandResponse
@@ -59,14 +63,69 @@ namespace IfpaSlackBot.Handlers
             {
                 case "rank":
                     return await Rank(commandDetailsTokens);
+                case "player":
+                    return await Player(commandDetailsTokens);
                 case "help":
                 default:
                     return await Help();
             }
         }
 
+        private async Task<SlashCommandResponse> Player(string[] tokens)
+        {
+            if (tokens == null || tokens.Length == 0)
+            {
+                return new SlashCommandResponse
+                {
+                    Message = new Message
+                    {
+                        Text = $"You must provide a player id or player name to search."
+                    },
+                    ResponseType = ResponseType.Ephemeral
+                };
+            }
+
+            Player playerDetails;
+
+            if (int.TryParse(tokens[0], out var playerId) == true)
+            {
+                playerDetails = await IFPAApi.GetPlayer(playerId);
+            }
+            else
+            {
+                var name = string.Join(' ', tokens);
+                var players = await IFPAApi.GetPlayersBySearch(new PlayerSearchFilter { Name = name });
+                if (players.Results.Count > 0)
+                {
+                    playerDetails = await IFPAApi.GetPlayer(players.Results.First().PlayerId);
+                }
+                else
+                {
+                    return new SlashCommandResponse
+                    {
+                        Message = new Message
+                        {
+                            Text = $"Search Criteria did not find any players."
+                        },
+                        ResponseType = ResponseType.Ephemeral
+                    };
+                }
+            }
+
+            var playerTourneyResults = await IFPAApi.GetPlayerResults(playerDetails.PlayerId);
+
+            return new SlashCommandResponse
+            {
+                Message = new Message
+                {
+                    Blocks = PlayerBlockBuilder.FromPlayer(playerDetails, playerTourneyResults)
+                },
+                ResponseType = ResponseType.InChannel
+            };
+        }
+
         private async Task<SlashCommandResponse> Rank(string[] tokens)
-        {       
+        {
 
             Enum.TryParse(tokens.FirstOrDefault(), true, out RankType rankType);
 

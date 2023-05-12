@@ -9,7 +9,7 @@ features:
   slash_commands:
     - command: /ifpa
       description: Returns IFPA ranking data
-      usage_hint: "[rank]"
+      usage_hint: "[command] [parameters]"
       should_escape: false
 oauth_config:
   scopes:
