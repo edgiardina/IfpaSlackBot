@@ -29,7 +29,7 @@ namespace IfpaSlackBot.BlockBuilders
                 {
                     Text = new Markdown
                     {
-                        Text = $"IFPA #{player.PlayerId} [{player.Initials}]\n{player.City} {player.StateProvince} {player.CountryName}   :flag-{player.CountryCode}:"
+                        Text = $"IFPA #{player.PlayerId} [{player.Initials}]\n{player.City} {player.StateProvince} {player.CountryName}   :flag-{player.CountryCode.ToLower()}:"
                     },
                     Accessory = new Image
                     {
@@ -67,7 +67,7 @@ namespace IfpaSlackBot.BlockBuilders
                     new SectionBlock
                     {
                         Fields = {
-                            new Markdown { Text = $":flag-{result.CountryCode}:   {result.TournamentName}" },
+                            new Markdown { Text = $":flag-{result.CountryCode.ToLower()}:   {result.TournamentName}" },
                             new PlainText { Text = $"{result.Position.OrdinalSuffix()}   {result.CurrentPoints.ToString("F2")}" },
                         }
                     }
